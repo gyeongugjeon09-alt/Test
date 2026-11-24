@@ -1,8 +1,10 @@
 import 'dotenv/config';
+import { execFile } from 'child_process';
 import crypto from 'crypto';
 import express from 'express';
 import fs from 'fs';
 import http from 'http';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -1118,6 +1120,63 @@ async function startServer() {
       const message = err instanceof Error ? err.message : 'AI 검색 처리 중 오류가 발생했습니다.';
       return res.status(500).json({ error: message });
     }
+  });
+
+  // Clean GitHub-ready ZIP export (excludes node_modules, dist, data/, .env secrets, etc.)
+  app.get('/api/export/github-zip', (_req, res) => {
+    const projectRoot = path.resolve(__dirname);
+    const tmpZipPath = path.join(
+      os.tmpdir(),
+      `sunbyeol-github-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.zip`
+    );
+
+    const pythonScript = `
+import os, sys, zipfile
+
+root_dir = sys.argv[1]
+out_zip = sys.argv[2]
+
+exclude_dirs = {
+    'node_modules', 'dist', 'build', 'coverage', '.git', 'data', '.aistudio', '__pycache__'
+}
+exclude_files = {'.DS_Store'}
+
+with zipfile.ZipFile(out_zip, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+    for dirpath, dirnames, filenames in os.walk(root_dir):
+        dirnames[:] = sorted([d for d in dirnames if d not in exclude_dirs])
+        for fname in sorted(filenames):
+            if fname in exclude_files or fname.endswith('.log') or fname.endswith('.zip'):
+                continue
+            if fname.startswith('.env') and fname != '.env.example':
+                continue
+            full_path = os.path.join(dirpath, fname)
+            rel_path = os.path.relpath(full_path, root_dir)
+            zf.write(full_path, os.path.join('sunbyeol', rel_path))
+`;
+
+    execFile('python3', ['-c', pythonScript, projectRoot, tmpZipPath], (err) => {
+      if (err) {
+        try {
+          if (fs.existsSync(tmpZipPath)) fs.unlinkSync(tmpZipPath);
+        } catch {
+          // ignore cleanup failure
+        }
+        return res.status(500).json({ error: 'GitHub용 ZIP 파일 생성 중 오류가 발생했습니다.' });
+      }
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="sunbyeol-github.zip"');
+      return res.sendFile(tmpZipPath, (sendErr) => {
+        try {
+          if (fs.existsSync(tmpZipPath)) fs.unlinkSync(tmpZipPath);
+        } catch {
+          // ignore cleanup failure
+        }
+        if (sendErr && !res.headersSent) {
+          res.status(500).json({ error: 'ZIP 파일 전송 중 오류가 발생했습니다.' });
+        }
+      });
+    });
   });
 
   const isProd = process.env.NODE_ENV === 'production' && fs.existsSync(path.resolve(__dirname, 'dist'));

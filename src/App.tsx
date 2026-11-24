@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  Download,
   Globe,
   Loader2,
   RefreshCw,
@@ -506,15 +507,32 @@ export default function App() {
   // Mandatory Initial Verification & Onboarding Gate
   if (!onboarding.completed) {
     return (
-      <OnboardingGate
-        initialData={onboarding}
-        onCompleted={(payload) => {
-          setOnboarding(payload.onboarding);
-          setProfile(payload.profile);
-          setRecommendations(payload.recommendations);
-          showToast('본인확인 및 초기 설정이 완료되었습니다.');
-        }}
-      />
+      <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
+        <div className="flex-1">
+          <OnboardingGate
+            initialData={onboarding}
+            onCompleted={(payload) => {
+              setOnboarding(payload.onboarding);
+              setProfile(payload.profile);
+              setRecommendations(payload.recommendations);
+              showToast('본인확인 및 초기 설정이 완료되었습니다.');
+            }}
+          />
+        </div>
+        <footer className="border-t border-[#E4E4E7] bg-white px-4 sm:px-6 py-4">
+          <div className="max-w-[1280px] mx-auto flex flex-wrap items-center justify-between gap-3 text-xs text-[#71717A]">
+            <span>SUNBYEOL · AI 취향 학습 커머스</span>
+            <a
+              href="/api/export/github-zip"
+              download="sunbyeol-github.zip"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 font-medium text-[#18181B] bg-[#F4F4F5] hover:bg-[#E4E4E7] border border-[#E4E4E7] rounded-lg transition-colors whitespace-nowrap shrink-0"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>GitHub 업로드용 ZIP 다운로드</span>
+            </a>
+          </div>
+        </footer>
+      </div>
     );
   }
 
@@ -1242,6 +1260,20 @@ export default function App() {
           </>
         )}
       </main>
+
+      <footer className="border-t border-[#E4E4E7] bg-white px-4 sm:px-6 py-4 mb-16">
+        <div className="max-w-[1280px] mx-auto flex flex-wrap items-center justify-between gap-3 text-xs text-[#71717A]">
+          <span>SUNBYEOL · AI 취향 학습 커머스</span>
+          <a
+            href="/api/export/github-zip"
+            download="sunbyeol-github.zip"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 font-medium text-[#18181B] bg-[#F4F4F5] hover:bg-[#E4E4E7] border border-[#E4E4E7] rounded-lg transition-colors whitespace-nowrap shrink-0"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>GitHub 업로드용 ZIP 다운로드</span>
+          </a>
+        </div>
+      </footer>
 
       {/* Bottom Fixed Dock Navigation */}
       <BottomNav
