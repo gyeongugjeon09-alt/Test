@@ -11,6 +11,7 @@ import {
   getHandoffLabel,
   getSelectionPriorityLabel,
 } from '../shared/catalog.ts';
+import { parseJsonResponse } from '../shared/http.ts';
 import type {
   AIRecommendationsResponse,
   DeliverySpeed,
@@ -179,7 +180,7 @@ export function CheckoutModal({
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.error || '주문 처리 중 오류가 발생했습니다.');
       }

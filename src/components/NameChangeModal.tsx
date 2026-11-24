@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AlertCircle, FileSignature, Loader2, X } from 'lucide-react';
+import { parseJsonResponse } from '../shared/http.ts';
 import type {
   LearnedProfile,
   NameChangeRequestRecord,
@@ -51,7 +52,7 @@ export function NameChangeModal({
           declarationConfirmed,
         }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.error || '개명 신청 처리 중 오류가 발생했습니다.');
       }

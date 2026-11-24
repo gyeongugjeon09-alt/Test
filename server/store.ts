@@ -1,4 +1,5 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { getSelectionPriorityLabel } from '../src/shared/catalog.ts';
 import type {
@@ -21,8 +22,13 @@ export interface AppStoreData {
   recommendations: AIRecommendationsResponse | null;
 }
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+const IS_VERCEL = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
+const DATA_DIR = IS_VERCEL
+  ? path.join(os.tmpdir(), 'sunbyeol-data')
+  : path.resolve(process.cwd(), 'data');
 const STORE_PATH = path.join(DATA_DIR, 'store.json');
+
+let memoryStoreFallback: AppStoreData | null = null;
 
 export function createEmptyOnboarding(): UserOnboardingProfile {
   return {
@@ -66,90 +72,97 @@ export function createEmptyProfile(): LearnedProfile {
   };
 }
 
+export function createEmptyStore(): AppStoreData {
+  return {
+    onboarding: createEmptyOnboarding(),
+    orders: [],
+    feedbacks: [],
+    reviews: [],
+    nameChangeRequests: [],
+    profile: createEmptyProfile(),
+    recommendations: null,
+  };
+}
+
+export function normalizeStoreData(parsed: Partial<AppStoreData>): AppStoreData {
+  const emptyOnboarding = createEmptyOnboarding();
+  const emptyProfile = createEmptyProfile();
+
+  const onboarding: UserOnboardingProfile = parsed.onboarding
+    ? {
+        ...emptyOnboarding,
+        ...parsed.onboarding,
+        preferredCategories:
+          Array.isArray(parsed.onboarding.preferredCategories) &&
+          parsed.onboarding.preferredCategories.length > 0
+            ? parsed.onboarding.preferredCategories
+            : emptyOnboarding.preferredCategories,
+        selectionPriority:
+          parsed.onboarding.selectionPriority ?? emptyOnboarding.selectionPriority,
+        isMinor: Boolean(parsed.onboarding.isMinor),
+        identityVerified: Boolean(parsed.onboarding.identityVerified),
+      }
+    : emptyOnboarding;
+
+  const profile: LearnedProfile = parsed.profile
+    ? {
+        ...emptyProfile,
+        ...parsed.profile,
+        preferredCategories:
+          Array.isArray(parsed.profile.preferredCategories) &&
+          parsed.profile.preferredCategories.length > 0
+            ? parsed.profile.preferredCategories
+            : onboarding.preferredCategories,
+        selectionPriority: parsed.profile.selectionPriority ?? onboarding.selectionPriority,
+        selectionPriorityLabel:
+          parsed.profile.selectionPriorityLabel ??
+          getSelectionPriorityLabel(
+            parsed.profile.selectionPriority ?? onboarding.selectionPriority
+          ),
+        feedbackCount: parsed.profile.feedbackCount ?? (parsed.feedbacks?.length ?? 0),
+        learnedDelivery: {
+          ...emptyProfile.learnedDelivery,
+          ...(parsed.profile.learnedDelivery ?? {}),
+        },
+      }
+    : emptyProfile;
+
+  return {
+    onboarding,
+    orders: Array.isArray(parsed.orders) ? parsed.orders : [],
+    feedbacks: Array.isArray(parsed.feedbacks) ? parsed.feedbacks : [],
+    reviews: Array.isArray(parsed.reviews) ? parsed.reviews : [],
+    nameChangeRequests: Array.isArray(parsed.nameChangeRequests) ? parsed.nameChangeRequests : [],
+    profile,
+    recommendations: parsed.recommendations ?? null,
+  };
+}
+
 export function readStore(): AppStoreData {
   try {
     if (!fs.existsSync(STORE_PATH)) {
-      const initial: AppStoreData = {
-        onboarding: createEmptyOnboarding(),
-        orders: [],
-        feedbacks: [],
-        reviews: [],
-        nameChangeRequests: [],
-        profile: createEmptyProfile(),
-        recommendations: null,
-      };
+      const initial = memoryStoreFallback ?? createEmptyStore();
       writeStore(initial);
       return initial;
     }
     const raw = fs.readFileSync(STORE_PATH, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<AppStoreData>;
-    const emptyOnboarding = createEmptyOnboarding();
-    const emptyProfile = createEmptyProfile();
-
-    const onboarding: UserOnboardingProfile = parsed.onboarding
-      ? {
-          ...emptyOnboarding,
-          ...parsed.onboarding,
-          preferredCategories:
-            Array.isArray(parsed.onboarding.preferredCategories) &&
-            parsed.onboarding.preferredCategories.length > 0
-              ? parsed.onboarding.preferredCategories
-              : emptyOnboarding.preferredCategories,
-          selectionPriority:
-            parsed.onboarding.selectionPriority ?? emptyOnboarding.selectionPriority,
-          isMinor: Boolean(parsed.onboarding.isMinor),
-          identityVerified: Boolean(parsed.onboarding.identityVerified),
-        }
-      : emptyOnboarding;
-
-    const profile: LearnedProfile = parsed.profile
-      ? {
-          ...emptyProfile,
-          ...parsed.profile,
-          preferredCategories:
-            Array.isArray(parsed.profile.preferredCategories) &&
-            parsed.profile.preferredCategories.length > 0
-              ? parsed.profile.preferredCategories
-              : onboarding.preferredCategories,
-          selectionPriority: parsed.profile.selectionPriority ?? onboarding.selectionPriority,
-          selectionPriorityLabel:
-            parsed.profile.selectionPriorityLabel ??
-            getSelectionPriorityLabel(
-              parsed.profile.selectionPriority ?? onboarding.selectionPriority
-            ),
-          feedbackCount: parsed.profile.feedbackCount ?? (parsed.feedbacks?.length ?? 0),
-          learnedDelivery: {
-            ...emptyProfile.learnedDelivery,
-            ...(parsed.profile.learnedDelivery ?? {}),
-          },
-        }
-      : emptyProfile;
-
-    return {
-      onboarding,
-      orders: Array.isArray(parsed.orders) ? parsed.orders : [],
-      feedbacks: Array.isArray(parsed.feedbacks) ? parsed.feedbacks : [],
-      reviews: Array.isArray(parsed.reviews) ? parsed.reviews : [],
-      nameChangeRequests: Array.isArray(parsed.nameChangeRequests) ? parsed.nameChangeRequests : [],
-      profile,
-      recommendations: parsed.recommendations ?? null,
-    };
+    const normalized = normalizeStoreData(parsed);
+    memoryStoreFallback = normalized;
+    return normalized;
   } catch {
-    return {
-      onboarding: createEmptyOnboarding(),
-      orders: [],
-      feedbacks: [],
-      reviews: [],
-      nameChangeRequests: [],
-      profile: createEmptyProfile(),
-      recommendations: null,
-    };
+    return memoryStoreFallback ?? createEmptyStore();
   }
 }
 
 export function writeStore(data: AppStoreData): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  memoryStoreFallback = data;
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(STORE_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  } catch {
+    // Keep memoryStoreFallback when running in strictly read-only environments
   }
-  fs.writeFileSync(STORE_PATH, JSON.stringify(data, null, 2), 'utf-8');
 }

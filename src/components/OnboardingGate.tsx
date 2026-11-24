@@ -15,6 +15,7 @@ import {
   isValidPhone,
   parseAndAnalyzeRRN,
 } from '../shared/catalog.ts';
+import { parseJsonResponse } from '../shared/http.ts';
 import type {
   AIRecommendationsResponse,
   DeliverySpeed,
@@ -145,7 +146,7 @@ export function OnboardingGate({ initialData, onCompleted }: OnboardingGateProps
           customsClearanceNumber: customsClearanceNumber.trim().toUpperCase(),
         }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.error || '본인확인 인증번호 발송에 실패했습니다.');
       }
@@ -173,7 +174,7 @@ export function OnboardingGate({ initialData, onCompleted }: OnboardingGateProps
           otpCode: otpInput.trim(),
         }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.error || '인증번호 확인에 실패했습니다.');
       }
@@ -250,7 +251,7 @@ export function OnboardingGate({ initialData, onCompleted }: OnboardingGateProps
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.error || '초기 설정 저장 중 오류가 발생했습니다.');
       }

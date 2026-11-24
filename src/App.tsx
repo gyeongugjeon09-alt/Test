@@ -22,6 +22,7 @@ import {
   getSelectionPriorityLabel,
   rankProductsByPreference,
 } from './shared/catalog.ts';
+import { parseJsonResponse } from './shared/http.ts';
 import type {
   AIRecommendationsResponse,
   AISearchResponse,
@@ -143,7 +144,7 @@ export default function App() {
 
   useEffect(() => {
     fetch('/api/state')
-      .then((res) => res.json())
+      .then((res) => parseJsonResponse(res))
       .then((data) => {
         if (Array.isArray(data.products)) setProducts(data.products);
         if (data.onboarding) setOnboarding(data.onboarding);
@@ -421,7 +422,7 @@ export default function App() {
           allowBrowseAll,
         }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<AISearchResponse & { error?: string }>(res);
       if (!res.ok) {
         throw new Error(data.error || 'AI 검색에 실패했습니다.');
       }
@@ -448,7 +449,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId, productName, marketplace, rating, context, query }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.error || '피드백 저장 중 오류가 발생했습니다.');
       }
@@ -473,7 +474,7 @@ export default function App() {
     setIsRefreshingRecs(true);
     try {
       const res = await fetch('/api/ai/recommendations', { method: 'POST' });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.error || '추천 새로고침에 실패했습니다.');
       }

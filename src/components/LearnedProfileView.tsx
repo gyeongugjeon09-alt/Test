@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { HANDOFF_OPTIONS, getFeedbackLabel, isValidPhone } from '../shared/catalog.ts';
+import { parseJsonResponse } from '../shared/http.ts';
 import type {
   AIRecommendationsResponse,
   DeliverySpeed,
@@ -102,7 +103,7 @@ export function LearnedProfileView({
           },
         }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data.error || '프로필 학습에 실패했습니다.');
       onProfileUpdated({
         onboarding: data.onboarding as UserOnboardingProfile,
@@ -125,7 +126,7 @@ export function LearnedProfileView({
     setStatusMsg(null);
     try {
       const res = await fetch('/api/profile/seed', { method: 'POST' });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data.error || '예시 주문 생성에 실패했습니다.');
       const nextProfile = data.profile as LearnedProfile;
       onProfileUpdated({
@@ -148,15 +149,20 @@ export function LearnedProfileView({
   const handleResetLearningOnly = async () => {
     setErrorMsg(null);
     setStatusMsg(null);
-    const res = await fetch('/api/profile/reset-learning', { method: 'POST' });
-    const data = await res.json();
-    onProfileUpdated({
-      profile: data.profile as LearnedProfile,
-      orders: data.orders as OrderRecord[],
-      feedbacks: data.feedbacks as FeedbackRecord[],
-      recommendations: data.recommendations as AIRecommendationsResponse,
-    });
-    setStatusMsg('등록된 본인인증·통관부호·주민번호는 유지하고 주문·피드백 학습 이력을 초기화했습니다.');
+    try {
+      const res = await fetch('/api/profile/reset-learning', { method: 'POST' });
+      const data = await parseJsonResponse(res);
+      if (!res.ok) throw new Error(data.error || '학습 기록 초기화에 실패했습니다.');
+      onProfileUpdated({
+        profile: data.profile as LearnedProfile,
+        orders: data.orders as OrderRecord[],
+        feedbacks: data.feedbacks as FeedbackRecord[],
+        recommendations: data.recommendations as AIRecommendationsResponse,
+      });
+      setStatusMsg('등록된 본인인증·통관부호·주민번호는 유지하고 주문·피드백 학습 이력을 초기화했습니다.');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '학습 기록 초기화에 실패했습니다.');
+    }
   };
 
   return (

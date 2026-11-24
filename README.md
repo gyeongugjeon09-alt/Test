@@ -46,3 +46,12 @@ npm run lint
 npm run build
 npm start
 ```
+
+### 4. Vercel 배포 안내
+
+이 프로젝트에는 Vercel용 Serverless API 엔트리(`api/index.ts`)와 라우팅 설정(`vercel.json`)이 포함되어 있습니다.
+
+1. GitHub 저장소에 전체 소스를 업로드합니다.
+2. Vercel에서 해당 저장소를 Import하면 `vercel.json` 설정에 따라 프론트엔드(`dist`)와 백엔드(`/api/*`)가 함께 배포됩니다.
+3. 실시간 외부 웹 검색·AI 요약 기능을 활성화하려면 Vercel 프로젝트의 **Settings > Environment Variables**에 `GEMINI_API_KEY`를 추가하세요. (미설정 시에도 기본 카탈로그·필터·주문 기능은 정상 동작합니다.)
+

@@ -1,0 +1,12 @@
+import type { IncomingMessage, ServerResponse } from 'http';
+import { createApiApp } from '../server/app.ts';
+
+const app = createApiApp();
+
+export default function handler(req: IncomingMessage, res: ServerResponse) {
+  // Ensure rewritten Vercel URLs always keep the /api prefix expected by Express routes
+  if (req.url && !req.url.startsWith('/api')) {
+    req.url = `/api${req.url.startsWith('/') ? '' : '/'}${req.url}`;
+  }
+  return app(req as Parameters<typeof app>[0], res as Parameters<typeof app>[1]);
+}

@@ -22,6 +22,7 @@ import {
   getProductReviews,
 } from '../shared/reviews.ts';
 import type { FeedbackRating, FeedbackRecord, Product, ProductReview } from '../shared/types.ts';
+import { parseJsonResponse } from '../shared/http.ts';
 import { FeedbackButtons } from './FeedbackButtons.tsx';
 import { ProductImage } from './ProductImage.tsx';
 import { StarRating } from './StarRating.tsx';
@@ -173,7 +174,7 @@ export function ProductDetailPage({
           pros: selectedPros,
         }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.error || '상품 평가 등록에 실패했습니다.');
       }
